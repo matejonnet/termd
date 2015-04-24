@@ -1,4 +1,4 @@
-package io.termd.core.http.vertx;
+package io.termd.core.http.undertow;
 
 import io.termd.core.http.IoUtils;
 import io.termd.core.io.BinaryDecoder;
@@ -10,32 +10,33 @@ import io.termd.core.tty.SignalDecoder;
 import io.termd.core.tty.TtyConnection;
 import io.termd.core.util.Dimension;
 import io.termd.core.util.Handler;
-import org.vertx.java.core.Context;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.sockjs.SockJSSocket;
+import io.undertow.websockets.core.AbstractReceiveListener;
+import io.undertow.websockets.core.BufferedBinaryMessage;
+import io.undertow.websockets.core.WebSocketCallback;
+import io.undertow.websockets.core.WebSocketChannel;
+import io.undertow.websockets.core.WebSockets;
+import org.xnio.ChannelListener;
+import org.xnio.Pooled;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executor;
 
 /**
- * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
+ * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
-public class SockJSTtyConnection implements TtyConnection {
+public class WebSocketTtyConnection implements TtyConnection {
 
-  private final SockJSSocket socket;
+  private final WebSocketChannel socket;
   private Dimension size = null;
   private Handler<Dimension> resizeHandler;
-  private final Context context;
+
+  private final Executor executor;
   private final ReadBuffer readBuffer = new ReadBuffer(new Executor() {
     @Override
     public void execute(final Runnable command) {
-      context.runOnContext(new org.vertx.java.core.Handler<Void>() {
-        @Override
-        public void handle(Void event) {
-          command.run();
-        }
-      });
+      executor.execute(command);
     }
   });
   private final SignalDecoder signalDecoder = new SignalDecoder(3).setReadHandler(readBuffer);
@@ -43,20 +44,31 @@ public class SockJSTtyConnection implements TtyConnection {
   private final BinaryEncoder encoder = new BinaryEncoder(512, StandardCharsets.US_ASCII, new Handler<byte[]>() {
     @Override
     public void handle(byte[] event) {
-      socket.write(new Buffer(event));
+        WebSocketCallback<Void> onComplete = null; //TODO on complete
+        WebSockets.sendBinary(ByteBuffer.wrap(event), socket, onComplete);
     }
   });
 
-  public SockJSTtyConnection(Vertx vertx, SockJSSocket socket) {
+  public WebSocketTtyConnection(WebSocketChannel socket, Executor executor) {
     this.socket = socket;
-    this.context = vertx.currentContext();
+    this.executor = executor;
 
-    socket.dataHandler(new org.vertx.java.core.Handler<Buffer>() {
+    ChannelListener<WebSocketChannel> listener = new AbstractReceiveListener() {
       @Override
-      public void handle(Buffer msg) {
-        IoUtils.writeToDecoder(decoder, msg.toString());
+      protected void onFullBinaryMessage(WebSocketChannel channel, BufferedBinaryMessage message) throws IOException {
+
+        Pooled<ByteBuffer[]> pulledData = message.getData();
+        try {
+          ByteBuffer[] resource = pulledData.getResource();
+          ByteBuffer byteBuffer = WebSockets.mergeBuffers(resource);
+          String msg = new String(byteBuffer.array());
+          IoUtils.writeToDecoder(decoder, msg);
+        } finally {
+          pulledData.discard();
+        }
       }
-    });
+    };
+    socket.getReceiveSetter().set(listener);
   }
 
   @Override
@@ -83,12 +95,7 @@ public class SockJSTtyConnection implements TtyConnection {
 
   @Override
   public void schedule(final Runnable task) {
-    context.runOnContext(new org.vertx.java.core.Handler<Void>() {
-      @Override
-      public void handle(Void v) {
-        task.run();
-      }
-    });
+    executor.execute(task);
   }
 
   @Override

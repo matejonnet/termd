@@ -40,6 +40,13 @@
       <version>2.1.2</version>
     </dependency>
 
+    <!-- Undertow -->
+    <dependency>
+      <groupId>io.undertow</groupId>
+      <artifactId>undertow-core</artifactId>
+      <version>1.2.0.Beta6</version>
+    </dependency>
+
     <!-- Apache SSHD -->
     <dependency>
       <groupId>commons-logging</groupId>
