@@ -208,19 +208,19 @@ PARSER_END(TermInfoParser)
   <END_NUMERIC_VALUE : <END_FEATURE>> : PARSING_FEATURE_LINE
 }
 
-void parseDatabase(ParserHandler handler):
+void parseDatabase(ParserHandler termdHandler):
 {}
 {
-  ( parseDevice(handler) | parseCommentLine() | <EMPTY_LINE> ) *
-  { handler.endDatabase(); }
+  ( parseDevice(termdHandler) | parseCommentLine() | <EMPTY_LINE> ) *
+  { termdHandler.endDatabase(); }
 }
 
-void parseDevice(ParserHandler handler):
+void parseDevice(ParserHandler termdHandler):
 {}
 {
-  parseHeaderLine(handler)
-  ( parseFeatureLine(handler) ) *
-  { handler.endDevice(); }
+  parseHeaderLine(termdHandler)
+  ( parseFeatureLine(termdHandler) ) *
+  { termdHandler.endDevice(); }
 }
 
 void parseCommentLine():
@@ -229,38 +229,38 @@ void parseCommentLine():
   <START_COMMENT_LINE> ( <ANY_CHAR> ) * <END_COMMENT_LINE>
 }
 
-void parseHeaderLine(ParserHandler handler):
+void parseHeaderLine(ParserHandler termdHandler):
 { Token alias; }
 {
-  alias=<START_HEADER_LINE> { handler.beginHeaderLine(alias.image); } ( <START_HEADER> alias=<HEADER_VALUE> { handler.addHeader(alias.image); } ) *  <END_HEADER_LINE>
-  { handler.endHeaderLine(); }
+  alias=<START_HEADER_LINE> { termdHandler.beginHeaderLine(alias.image); } ( <START_HEADER> alias=<HEADER_VALUE> { termdHandler.addHeader(alias.image); } ) *  <END_HEADER_LINE>
+  { termdHandler.endHeaderLine(); }
 }
 
-void parseFeatureLine(ParserHandler handler):
+void parseFeatureLine(ParserHandler termdHandler):
 {}
 {
-  ( <START_FEATURE_LINE> ( parseFeature(handler) ) + <END_FEATURE_LINE> )
+  ( <START_FEATURE_LINE> ( parseFeature(termdHandler) ) + <END_FEATURE_LINE> )
 }
 
-void parseFeature(ParserHandler handler):
+void parseFeature(ParserHandler termdHandler):
 { Token name; }
 {
-  name=<START_FEATURE> ( parseBooleanFeature(name.image, handler) | parseStringFeature(name.image, handler) | parseNumericFeature(name.image, handler) )
+  name=<START_FEATURE> ( parseBooleanFeature(name.image, termdHandler) | parseStringFeature(name.image, termdHandler) | parseNumericFeature(name.image, termdHandler) )
 }
 
-void parseBooleanFeature(String name, ParserHandler handler):
+void parseBooleanFeature(String name, ParserHandler termdHandler):
 {}
 {
   <END_BOOLEAN_VALUE> {
     if (name.endsWith("@")) {
-      handler.addBooleanFeature(name.substring(0, name.length() - 1), false);
+      termdHandler.addBooleanFeature(name.substring(0, name.length() - 1), false);
     } else {
-      handler.addBooleanFeature(name, true);
+      termdHandler.addBooleanFeature(name, true);
     }
   }
 }
 
-void parseStringFeature(String name, ParserHandler handler):
+void parseStringFeature(String name, ParserHandler termdHandler):
 { List<OpCode> value = new ArrayList<OpCode>(); OpCode opcode; }
 {
   try {
@@ -274,7 +274,7 @@ void parseStringFeature(String name, ParserHandler handler):
         }
       }
     ) * <END_STRING_VALUE>
-    { handler.addStringFeature(name, new Sequence(value)); }
+    { termdHandler.addStringFeature(name, new Sequence(value)); }
   } catch (ParseException e) {
     // Deep error recovery
     System.out.println("Coult not parse feature " + name);
@@ -445,13 +445,13 @@ OpCode.PushConstant parseOpCodePushCharConstant():
   { return new OpCode.PushConstant(c, false);  }
 }
 
-void parseNumericFeature(String name, ParserHandler handler):
+void parseNumericFeature(String name, ParserHandler termdHandler):
 { Token t; }
 {
   ( <START_NUMERIC_VALUE> (
-    t=<HEX_VALUE> { handler.addNumericFeature(name, Integer.parseInt(t.image.substring(2), 16)); } |
-    t=<OCT_VALUE> { handler.addNumericFeature(name, Integer.parseInt(t.image, 8)); } |
-    t=<DEC_VALUE> { handler.addNumericFeature(name, Integer.parseInt(t.image)); }
+    t=<HEX_VALUE> { termdHandler.addNumericFeature(name, Integer.parseInt(t.image.substring(2), 16)); } |
+    t=<OCT_VALUE> { termdHandler.addNumericFeature(name, Integer.parseInt(t.image, 8)); } |
+    t=<DEC_VALUE> { termdHandler.addNumericFeature(name, Integer.parseInt(t.image)); }
   ) <END_NUMERIC_VALUE> )
 }
 

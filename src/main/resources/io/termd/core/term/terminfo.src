@@ -11285,7 +11285,7 @@ att5620-24|tty5620-24|dmd-24|teletype dmd 5620 in a 24x80 layer,
 	lines#24, use=att5620,
 att5620-34|tty5620-34|dmd-34|teletype dmd 5620 in a 34x80 layer,
 	lines#34, use=att5620,
-# 5620 layer running the "S" system's downloaded graphics handler:
+# 5620 layer running the "S" system's downloaded graphics termdHandler:
 att5620-s|tty5620-s|layer|vitty|5620 S layer,
 	OTbs, OTpt, am,
 	cols#80, it#8, lines#72,

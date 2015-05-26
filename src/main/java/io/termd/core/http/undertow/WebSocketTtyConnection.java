@@ -43,9 +43,9 @@ public class WebSocketTtyConnection implements TtyConnection {
   private final BinaryDecoder decoder = new BinaryDecoder(512, TelnetCharset.INSTANCE, signalDecoder);
   private final BinaryEncoder encoder = new BinaryEncoder(512, StandardCharsets.US_ASCII, new Handler<byte[]>() {
     @Override
-    public void handle(byte[] event) {
+    public void handle(byte[] bytes) {
         WebSocketCallback<Void> onComplete = null; //TODO on complete
-        WebSockets.sendBinary(ByteBuffer.wrap(event), socket, onComplete);
+        WebSockets.sendBinary(ByteBuffer.wrap(bytes), socket, onComplete);
     }
   });
 

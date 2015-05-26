@@ -170,19 +170,23 @@ public class NativeProcessBootstrap implements Handler<TtyConnection> {
   }
 
   public static void main(String[] args) throws Exception {
+    start("localhost", 8080, null);
+  }
+
+  public static void start(String host, int port, final Runnable onStart) throws InterruptedException {
     WebSocketBootstrap bootstrap = new WebSocketBootstrap(
         "localhost",
         8080,
         new NativeProcessBootstrap());
     final CountDownLatch latch = new CountDownLatch(1);
-    bootstrap.bootstrap(new Handler() {
+    bootstrap.bootstrap(new Handler<Boolean>() {
       @Override
-      public void handle(AsyncResult<Void> event) {
-        if (event.succeeded()) {
+      public void handle(Boolean event) {
+        if (event) {
           System.out.println("Server started on " + 8080);
+          if (onStart != null) onStart.run();
         } else {
           System.out.println("Could not start");
-          event.cause().printStackTrace();
           latch.countDown();
         }
       }
