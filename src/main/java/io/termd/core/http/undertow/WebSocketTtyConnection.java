@@ -12,6 +12,7 @@ import io.termd.core.util.Dimension;
 import io.termd.core.util.Handler;
 import io.undertow.websockets.core.AbstractReceiveListener;
 import io.undertow.websockets.core.BufferedBinaryMessage;
+import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.WebSocketCallback;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.core.WebSockets;
@@ -36,6 +37,7 @@ public class WebSocketTtyConnection implements TtyConnection {
   private final ReadBuffer readBuffer = new ReadBuffer(new Executor() {
     @Override
     public void execute(final Runnable command) {
+      System.out.println("Server read buffer executing command:" + command);
       executor.execute(command);
     }
   });
@@ -49,26 +51,35 @@ public class WebSocketTtyConnection implements TtyConnection {
     }
   });
 
-  public WebSocketTtyConnection(WebSocketChannel socket, Executor executor) {
-    this.socket = socket;
+  public WebSocketTtyConnection(final WebSocketChannel webSocketChannel, Executor executor) {
+    this.socket = webSocketChannel;
     this.executor = executor;
 
     ChannelListener<WebSocketChannel> listener = new AbstractReceiveListener() {
+
       @Override
       protected void onFullBinaryMessage(WebSocketChannel channel, BufferedBinaryMessage message) throws IOException {
-
+        System.out.println("# Server received full binary message"); //TODO log
         Pooled<ByteBuffer[]> pulledData = message.getData();
         try {
           ByteBuffer[] resource = pulledData.getResource();
           ByteBuffer byteBuffer = WebSockets.mergeBuffers(resource);
           String msg = new String(byteBuffer.array());
+          System.out.println("Sending message to decoder: " + msg);
           IoUtils.writeToDecoder(decoder, msg);
         } finally {
           pulledData.discard();
         }
       }
+
+      @Override
+      protected void onFullTextMessage (WebSocketChannel channel, BufferedTextMessage message) throws IOException {
+        System.out.println("# Server received full binary message: " + message.getData()); //TODO log
+        IoUtils.writeToDecoder(decoder, message.getData());
+      }
     };
-    socket.getReceiveSetter().set(listener);
+    webSocketChannel.getReceiveSetter().set(listener);
+    webSocketChannel.resumeReceives();
   }
 
   @Override
@@ -95,6 +106,7 @@ public class WebSocketTtyConnection implements TtyConnection {
 
   @Override
   public void schedule(final Runnable task) {
+    System.out.println("# Server scheduling executor task: " + task);
     executor.execute(task);
   }
 

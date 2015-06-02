@@ -9,9 +9,18 @@ import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.websockets.WebSocketConnectionCallback;
 import io.undertow.websockets.WebSocketProtocolHandshakeHandler;
+import io.undertow.websockets.core.AbstractReceiveListener;
+import io.undertow.websockets.core.BufferedBinaryMessage;
+import io.undertow.websockets.core.BufferedTextMessage;
+import io.undertow.websockets.core.StreamSourceFrameChannel;
 import io.undertow.websockets.core.WebSocketChannel;
+import io.undertow.websockets.core.WebSockets;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
+import org.xnio.ChannelListener;
+import org.xnio.Pooled;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -62,11 +71,6 @@ public class WebSocketBootstrap {
       getWebSocketHandler().handleRequest(exchange);
       return;
     }
-//    if (requestPath.equals("/term/info")) { //sockjs
-//      TermInfo termInfo = TermInfo.getDefault();
-//      termInfo.
-//      return;
-//    }
 
     try {
       String resourcePath = "io/termd/core/http" + requestPath;
@@ -92,6 +96,51 @@ public class WebSocketBootstrap {
     HttpHandler webSocketHandshakeHandler = new WebSocketProtocolHandshakeHandler(webSocketConnectionCallback);
     return webSocketHandshakeHandler;
 
+  }
+
+  private void registerListener(WebSocketChannel webSocketChannel) {
+    ChannelListener<WebSocketChannel> listener = new AbstractReceiveListener() {
+
+      @Override
+      public void handleEvent(WebSocketChannel channel) {
+        System.out.println("## Handling server receive event ... ");
+        super.handleEvent(channel);
+      }
+
+      @Override
+      protected void onFullBinaryMessage(WebSocketChannel channel, BufferedBinaryMessage message) throws IOException {
+        System.out.println("# Server received full binary message"); //TODO log
+        Pooled<ByteBuffer[]> pulledData = message.getData();
+        try {
+          ByteBuffer[] resource = pulledData.getResource();
+          ByteBuffer byteBuffer = WebSockets.mergeBuffers(resource);
+          String msg = new String(byteBuffer.array());
+        } finally {
+          pulledData.discard();
+        }
+      }
+
+      @Override
+      protected void onFullTextMessage (WebSocketChannel channel, BufferedTextMessage message) throws IOException {
+        System.out.println("# Server received full binary message"); //TODO log
+      }
+
+      @Override
+      protected void onText(WebSocketChannel webSocketChannel, StreamSourceFrameChannel messageChannel) throws IOException {
+        System.out.println("# Server received text message ... ");
+        bufferFullMessage(messageChannel);
+      }
+
+      @Override
+      protected void onBinary(WebSocketChannel webSocketChannel, StreamSourceFrameChannel messageChannel) throws IOException {
+        System.out.println("# Server received binary message ... ");
+        bufferFullMessage(messageChannel);
+      }
+
+    };
+    System.out.println("Server is setting receive listener ...");
+    webSocketChannel.getReceiveSetter().set(listener);
+    webSocketChannel.resumeReceives();
   }
 
 }

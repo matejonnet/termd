@@ -1,6 +1,7 @@
 package io.termd.core.http;
 
 import io.termd.core.io.BinaryDecoder;
+import org.vertx.java.core.json.DecodeException;
 import org.vertx.java.core.json.JsonObject;
 
 import java.io.File;
@@ -17,12 +18,20 @@ import java.util.Scanner;
 public class IoUtils {
 
   public static void writeToDecoder(BinaryDecoder decoder, String msg) {
-    JsonObject obj = new JsonObject(msg.toString());
-    switch (obj.getString("action")) {
-      case "read":
-        String data = obj.getString("data");
-        decoder.write(data.getBytes());
-        break;
+    JsonObject obj = null;
+    try {
+      obj = new JsonObject(msg.toString());
+    } catch (DecodeException e) {
+      System.out.println("Cannot parse json: " + msg.toString());
+      e.printStackTrace(); //TODO log
+    }
+    if (obj != null) {
+      switch (obj.getString("action")) {
+        case "read":
+          String data = obj.getString("data");
+          decoder.write(data.getBytes());
+          break;
+      }
     }
   }
 

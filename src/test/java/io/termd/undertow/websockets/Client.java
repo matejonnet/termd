@@ -6,10 +6,10 @@ import javax.websocket.ContainerProvider;
 import javax.websocket.Endpoint;
 import javax.websocket.EndpointConfig;
 import javax.websocket.MessageHandler;
+import javax.websocket.RemoteEndpoint;
 import javax.websocket.Session;
 import java.net.URI;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -25,16 +25,16 @@ public class Client {
     private Consumer<byte[]> onBinaryMessageConsumer;
     private Consumer<CloseReason> onCloseConsumer;
 
-    public void connect(String websocketUrl) throws Exception {
+    public Endpoint connect(String websocketUrl) throws Exception {
         ClientEndpointConfig clientEndpointConfig = ClientEndpointConfig.Builder.create().build();
         ContainerProvider.getWebSocketContainer().connectToServer(endpoint, clientEndpointConfig, new URI(websocketUrl));
+        return endpoint;
     }
 
     public void close() throws Exception {
+        System.out.println("Client is closing connection..."); //TODO log debug
         endpoint.session.close();
-        System.out.println("Waiting to close ..."); //TODO log
-        endpoint.closeLatch.await(10, TimeUnit.SECONDS);
-
+//        endpoint.closeLatch.await(10, TimeUnit.SECONDS);
     }
 
     public void onOpen(Consumer<Session> onOpen) {
@@ -53,34 +53,63 @@ public class Client {
         onCloseConsumer = onClose;
     }
 
+    public RemoteEndpoint.Basic getRemoteEndpoint() {
+        return endpoint.session.getBasicRemote();
+    }
+
     public class ProgramaticClientEndpoint extends Endpoint {
         final CountDownLatch closeLatch = new CountDownLatch(1); //TODO do we need latch ?
         volatile Session session;
 
         @Override
         public void onOpen(Session session, EndpointConfig config) {
+            System.out.println("> Client received open.");
             this.session = session;
+
             session.addMessageHandler(new MessageHandler.Whole<String>() {
                 @Override
                 public void onMessage(String message) {
                     System.out.println("> Client received message:" + message);
-                    onStringMessageConsumer.accept(message);
+                    if (onStringMessageConsumer != null) {
+                        onStringMessageConsumer.accept(message);
+                    }
                 }
             });
             session.addMessageHandler(new MessageHandler.Whole<byte[]>() {
                 @Override
                 public void onMessage(byte[] bytes) {
                     System.out.println("> Client received binary message:" + new String(bytes));
-                    onBinaryMessageConsumer.accept(bytes);
+                    if (onBinaryMessageConsumer != null) {
+                        onBinaryMessageConsumer.accept(bytes);
+                    }
                 }
             });
-            onOpenConsumer.accept(session);
+
+//            System.out.println("Client is sending message to server ...");
+//            RemoteEndpoint.Async asyncRemote = session.getAsyncRemote();
+//            asyncRemote.sendText("pwd\n");
+//            asyncRemote.sendBinary(ByteBuffer.wrap("whoami\n".getBytes()));
+//
+//            RemoteEndpoint.Basic basicRemote = session.getBasicRemote();
+//            try {
+//                basicRemote.sendText("date\n");
+//                basicRemote.sendBinary(ByteBuffer.wrap("ls -la\n".getBytes()));
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            onOpenConsumer.accept(session);
         }
 
         @Override
         public void onClose(Session session, CloseReason closeReason) {
+            System.out.println("> Client received close.");
             onCloseConsumer.accept(closeReason);
-            closeLatch.countDown();
+//            closeLatch.countDown();
+        }
+
+        @Override
+        public void onError(Session session, Throwable thr) {
+            thr.printStackTrace(); //TODO log
         }
     }
 

@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CountDownLatch;
 
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
@@ -27,6 +26,7 @@ public class NativeProcessBootstrap implements Handler<TtyConnection> {
     Keymap keymap = new Keymap(inputrc);
     Readline readline = new Readline(keymap);
     for (io.termd.core.readline.Function function : Helper.loadServices(Thread.currentThread().getContextClassLoader(), io.termd.core.readline.Function.class)) {
+      System.out.println("Server is adding function to readline:" + function); //TODO log trace
       readline.addFunction(function);
     }
     conn.setTermHandler(new Handler<String>() {
@@ -36,18 +36,19 @@ public class NativeProcessBootstrap implements Handler<TtyConnection> {
         System.out.println("CLIENT $TERM=" + term);
       }
     });
-    conn.writeHandler().handle(Helper.toCodePoints("Welcome sir\r\n\r\n"));
+    conn.writeHandler().handle(Helper.toCodePoints("Welcome sir\r\n"));
     read(conn, readline);
   }
 
   public void read(final TtyConnection conn, final Readline readline) {
-    readline.readline(conn, "% ", new Handler<String>() {
+    Handler<String> requestHandler = new Handler<String>() {
       @Override
       public void handle(String line) {
         Task task = new Task(conn, readline, line);
         task.start();
       }
-    });
+    };
+    readline.readline(conn, "% ", requestHandler);
   }
 
   class Task extends Thread {
@@ -178,7 +179,7 @@ public class NativeProcessBootstrap implements Handler<TtyConnection> {
         "localhost",
         8080,
         new NativeProcessBootstrap());
-    final CountDownLatch latch = new CountDownLatch(1);
+//    final CountDownLatch latch = new CountDownLatch(1);
     bootstrap.bootstrap(new Handler<Boolean>() {
       @Override
       public void handle(Boolean event) {
@@ -187,10 +188,10 @@ public class NativeProcessBootstrap implements Handler<TtyConnection> {
           if (onStart != null) onStart.run();
         } else {
           System.out.println("Could not start");
-          latch.countDown();
+//          latch.countDown();
         }
       }
     });
-    latch.await();
+//    latch.await();
   }
 }
