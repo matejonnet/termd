@@ -106,7 +106,6 @@ public class WebSocketTtyConnection implements TtyConnection {
 
   @Override
   public void schedule(final Runnable task) {
-    System.out.println("# Server scheduling executor task: " + task);
     executor.execute(task);
   }
 

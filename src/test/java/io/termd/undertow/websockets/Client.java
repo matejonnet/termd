@@ -24,6 +24,7 @@ public class Client {
     private Consumer<String> onStringMessageConsumer;
     private Consumer<byte[]> onBinaryMessageConsumer;
     private Consumer<CloseReason> onCloseConsumer;
+    private Consumer<Throwable> onErrorConsumer;
 
     public Endpoint connect(String websocketUrl) throws Exception {
         ClientEndpointConfig clientEndpointConfig = ClientEndpointConfig.Builder.create().build();
@@ -51,6 +52,10 @@ public class Client {
 
     public void onClose(Consumer<CloseReason> onClose) {
         onCloseConsumer = onClose;
+    }
+
+    public void onError(Consumer<Throwable> onError) {
+        onErrorConsumer = onError;
     }
 
     public RemoteEndpoint.Basic getRemoteEndpoint() {
@@ -84,20 +89,9 @@ public class Client {
                     }
                 }
             });
-
-//            System.out.println("Client is sending message to server ...");
-//            RemoteEndpoint.Async asyncRemote = session.getAsyncRemote();
-//            asyncRemote.sendText("pwd\n");
-//            asyncRemote.sendBinary(ByteBuffer.wrap("whoami\n".getBytes()));
-//
-//            RemoteEndpoint.Basic basicRemote = session.getBasicRemote();
-//            try {
-//                basicRemote.sendText("date\n");
-//                basicRemote.sendBinary(ByteBuffer.wrap("ls -la\n".getBytes()));
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            onOpenConsumer.accept(session);
+            if (onOpenConsumer != null) {
+                onOpenConsumer.accept(session);
+            }
         }
 
         @Override
@@ -109,7 +103,11 @@ public class Client {
 
         @Override
         public void onError(Session session, Throwable thr) {
-            thr.printStackTrace(); //TODO log
+            if (onErrorConsumer != null) {
+                onErrorConsumer.accept(thr);
+            } else {
+                thr.printStackTrace(); //TODO log
+            }
         }
     }
 

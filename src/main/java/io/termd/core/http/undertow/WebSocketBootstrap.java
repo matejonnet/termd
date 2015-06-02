@@ -32,7 +32,7 @@ public class WebSocketBootstrap {
   final String host;
   final int port;
   final Handler<TtyConnection> termdHandler;
-  private final Executor executor = Executors.newFixedThreadPool(4);//TODO configurable or get executor from undertow
+  private final Executor executor = Executors.newFixedThreadPool(1);
 
   public WebSocketBootstrap(String host, int port, Handler<TtyConnection> termdHandler) {
     this.host = host;
@@ -51,6 +51,8 @@ public class WebSocketBootstrap {
     };
 
     Undertow undertow = Undertow.builder()
+//      .setIoThreads(2)
+//      .setWorkerThreads(1)
       .addHttpListener(port, host)
       .setHandler(httpHandler)
       .build();

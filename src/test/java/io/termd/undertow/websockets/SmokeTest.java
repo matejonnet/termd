@@ -10,13 +10,17 @@ import javax.websocket.CloseReason;
 import javax.websocket.RemoteEndpoint;
 import javax.websocket.Session;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 
 /**
@@ -27,9 +31,6 @@ public class SmokeTest {
     private static final String HOST = "localhost";
     private static final String WEB_SOCKET_PATH = "/term";
     private static final int PORT = 8080;
-
-//    final RemoteEndpoint.Async[] remoteEndpointRef = new RemoteEndpoint.Async[1];
-//    final ObjectWrapper<RemoteEndpoint.Basic> remoteEndpointRef = new ObjectWrapper<>();
 
     @BeforeClass
     public static void setUP() throws Exception {
@@ -52,87 +53,22 @@ public class SmokeTest {
         String websocketUrl = "http://" + HOST + ":" + PORT + WEB_SOCKET_PATH;
         System.out.println("websocketUrl:" + websocketUrl);
 
-        ObjectWrapper<Client> clientReference = new ObjectWrapper<>();
+        ObjectWrapper<Boolean> pwdExecuted = new ObjectWrapper<>(false);
+        ObjectWrapper<List<String>> remoteResponseWrapper = new ObjectWrapper<>(new ArrayList<>());
 
-//        Runnable runClient = () -> {
-//            Client client = setUpClient();
-//            clientReference.set(client);
-//            try {
-//                client.connect(websocketUrl);
-//            } catch (Exception e) {
-//                e.printStackTrace(); //TODO log
-//            }
-//        };
-//        Thread clientThread = new Thread(runClient);
-//        clientThread.start();
-//        runClient.run();
-
-//        List<String> receivedMessages = new ArrayList<>();
-//
-//        Client client = clientReference.get();
-//
-//        client.onStringMessage(message -> {
-//            System.out.println("Adding received string message to the list: " + message);
-//            receivedMessages.add(message);
-//        });
-//
-//        client.onBinaryMessage(bytes -> {
-//            System.out.println("Adding received binary message to the list:" + new String(bytes));
-//            receivedMessages.add(new String(bytes));
-//        });
-
-
-
-//        Runnable sendData = () -> {
-//            try {
-//                RemoteEndpoint.Basic remoteEndpoint = remoteEndpointRef.get();
-//                String data = "{action:'read',data:'pwd\n'}";
-//                char[] chars = data.toCharArray();
-//                int i = 0;
-//                for (char aChar : chars) {
-//                    i++;
-//                    boolean isLast = i == chars.length;
-////                    System.out.println("is " + i + " last: " + isLast); //TODO log
-//                    remoteEndpoint.sendText(String.valueOf(aChar), isLast);
-//
-//                }
-//                remoteEndpoint.sendBinary(ByteBuffer.wrap(data.getBytes()));
-//                remoteEndpoint.sendText(data);
-//                Thread.sleep(1000);
-//            } catch (Exception e) {
-//                e.printStackTrace(); //TODO log
-//            }
-//        };
-//
-//
-//        Thread sendDataThread = new Thread(sendData);
-//        sendDataThread.start();
-//        sendDataThread.join();
-
-//        System.out.println(receivedMessages);
-
-
-//        Client client = new Client();
         Client client = setUpClient();
-
-
-        try {
-            client.connect(websocketUrl);
-        } catch (Exception e) {
-            System.out.println("FAILED to connect!");
-            e.printStackTrace(); //TODO log
-        }
-
-        RemoteEndpoint.Basic remoteEndpoint = client.getRemoteEndpoint();
-
-
-        String data = "{\"action\":\"read\",\"data\":\"pwd\\n\"}";
-        remoteEndpoint.sendBinary(ByteBuffer.wrap(data.getBytes()));
-//        remoteEndpoint.sendText(data);
-//        for (char aChar : data.toCharArray()) {
-//            remoteEndpoint.sendText(String.valueOf(aChar));
-//        }
-
+        Consumer<byte[]> responseConsumer = (bytes) -> {
+            String response = new String(bytes);
+            if ("% ".equals(response)) {
+                if (!pwdExecuted.get()) {
+                    pwdExecuted.set(true);
+                    executeRemoteCommand(client, "pwd");
+                }
+            } else {
+                remoteResponseWrapper.get().add(response);
+            }
+        };
+        client.onBinaryMessage(responseConsumer);
 
         Semaphore semaphore = new Semaphore(1);
         semaphore.acquire();
@@ -142,11 +78,38 @@ public class SmokeTest {
             semaphore.release();
         });
 
+        try {
+            client.connect(websocketUrl);
+        } catch (Exception e) {
+            System.out.println("FAILED to connect!");
+            e.printStackTrace(); //TODO log
+        }
 
-        Thread.sleep(1000);
+        Thread.sleep(2000); //TODO use semaphore
         client.close();
         semaphore.acquire();
-        Assert.assertTrue(true);
+
+        List<String> strings = remoteResponseWrapper.get();
+        String remoteResponses = strings.stream().collect(Collectors.joining());
+        File pwd = new File("");
+        System.out.println("Remote response list:" + remoteResponseWrapper.get());
+        System.out.println("Remote responses:" + remoteResponses);
+        Assert.assertTrue("Response should contain current working dir.", remoteResponses.contains(pwd.getAbsolutePath()));
+    }
+
+    private void executeRemoteCommand(Client client, String command) {
+        System.out.println("Executing remote command ...");
+        RemoteEndpoint.Basic remoteEndpoint = client.getRemoteEndpoint();
+        String data = "{\"action\":\"read\",\"data\":\"" + command + "\\r\\n\"}";
+        try {
+            remoteEndpoint.sendBinary(ByteBuffer.wrap(data.getBytes()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+//        remoteEndpoint.sendText(data);
+//        for (char aChar : data.toCharArray()) {
+//            remoteEndpoint.sendText(String.valueOf(aChar));
+//        }
     }
 
     private Client setUpClient() {
@@ -155,17 +118,6 @@ public class SmokeTest {
         Consumer<Session> onOpen = (session) -> {
             try {
                 System.out.println("Client connection opened.");
-    //            session.getAsyncRemote().sendText("whoami\n");
-    //            session.getAsyncRemote().sendText("{action:'read',data:'whoami '}");
-//                session.getBasicRemote().sendText("{action:'read',data:'whoami '}");
-//                String data = "whoami\n";
-//                char[] chars = data.toCharArray();
-//                for (char aChar : chars) {
-//                    session.getBasicRemote().sendText("{action:'read',data:'" + aChar + "'}");
-//                    session.getAsyncRemote().sendText("{action:'read',data:'" + aChar + "'}");
-//                }
-//                remoteEndpointRef[0] = session.getAsyncRemote();
-//                remoteEndpointRef.set(session.getBasicRemote());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -177,7 +129,6 @@ public class SmokeTest {
 
         client.onOpen(onOpen);
         client.onClose(onClose);
-
 
         return client;
     }
