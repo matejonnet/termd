@@ -5,6 +5,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.websocket.CloseReason;
 import javax.websocket.RemoteEndpoint;
@@ -16,9 +18,11 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -27,6 +31,8 @@ import java.util.stream.Collectors;
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
 public class SmokeTest {
+
+    private static final Logger log = LoggerFactory.getLogger(SmokeTest.class);
 
     private static final String HOST = "localhost";
     private static final String WEB_SOCKET_PATH = "/term";
@@ -49,9 +55,8 @@ public class SmokeTest {
     }
 
     @Test
-    public void clinetShouldBeAbleToOpenWebsocketConnection() throws Exception {
-        String websocketUrl = "http://" + HOST + ":" + PORT + WEB_SOCKET_PATH;
-        System.out.println("websocketUrl:" + websocketUrl);
+    public void clientShouldBeAbleToOpenWebSocketConnection() throws Exception {
+        String webSocketUrl = "http://" + HOST + ":" + PORT + WEB_SOCKET_PATH;
 
         ObjectWrapper<Boolean> pwdExecuted = new ObjectWrapper<>(false);
         ObjectWrapper<List<String>> remoteResponseWrapper = new ObjectWrapper<>(new ArrayList<>());
@@ -70,31 +75,42 @@ public class SmokeTest {
         };
         client.onBinaryMessage(responseConsumer);
 
-        Semaphore semaphore = new Semaphore(1);
-        semaphore.acquire();
-
         client.onClose(closeReason -> {
-            System.out.println("Releasing client ...");
-            semaphore.release();
         });
 
         try {
-            client.connect(websocketUrl);
+            client.connect(webSocketUrl);
         } catch (Exception e) {
-            System.out.println("FAILED to connect!");
-            e.printStackTrace(); //TODO log
+            throw new AssertionError("Failed to connect to remote client.", e);
         }
 
-        Thread.sleep(2000); //TODO use semaphore
+        assertThatResultWasReceived(remoteResponseWrapper, 15, ChronoUnit.SECONDS);
         client.close();
-        semaphore.acquire();
+    }
 
+    private void assertThatResultWasReceived(ObjectWrapper<List<String>> remoteResponseWrapper, long timeout, TemporalUnit timeUnit) {
         List<String> strings = remoteResponseWrapper.get();
-        String remoteResponses = strings.stream().collect(Collectors.joining());
-        File pwd = new File("");
-        System.out.println("Remote response list:" + remoteResponseWrapper.get());
-        System.out.println("Remote responses:" + remoteResponses);
-        Assert.assertTrue("Response should contain current working dir.", remoteResponses.contains(pwd.getAbsolutePath()));
+
+        File cwd = new File("");
+
+        boolean responseContainsCWD = false;
+        LocalDateTime stared = LocalDateTime.now();
+        while (true) {
+            List<String> stringsCopy = new ArrayList<>(strings);
+            String remoteResponses = stringsCopy.stream().collect(Collectors.joining());
+
+            if (stared.plus(timeout, timeUnit).isBefore(LocalDateTime.now())) {
+                log.info("Remote responses: {}", remoteResponses);
+                throw new AssertionError("Did not received response in " + timeout + " " + timeUnit);
+            }
+
+            if (remoteResponses.contains(cwd.getAbsolutePath())) {
+                responseContainsCWD = true;
+                log.info("Remote responses: {}", remoteResponses);
+                break;
+            }
+        }
+        Assert.assertTrue("Response should contain current working dir.", responseContainsCWD);
     }
 
     private void executeRemoteCommand(Client client, String command) {
@@ -106,10 +122,6 @@ public class SmokeTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
-//        remoteEndpoint.sendText(data);
-//        for (char aChar : data.toCharArray()) {
-//            remoteEndpoint.sendText(String.valueOf(aChar));
-//        }
     }
 
     private Client setUpClient() {

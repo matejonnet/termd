@@ -17,21 +17,18 @@ import java.util.Scanner;
  */
 public class IoUtils {
 
-  public static void writeToDecoder(BinaryDecoder decoder, String msg) {
-    JsonObject obj = null;
-    try {
-      obj = new JsonObject(msg.toString());
-    } catch (DecodeException e) {
-      System.out.println("Cannot parse json: " + msg.toString());
-      e.printStackTrace(); //TODO log
-    }
-    if (obj != null) {
-      switch (obj.getString("action")) {
-        case "read":
-          String data = obj.getString("data");
-          decoder.write(data.getBytes());
-          break;
-      }
+  /**
+   * @param decoder
+   * @param msg
+   * @throws DecodeException
+   */
+  public static void writeToDecoder(BinaryDecoder decoder, String msg) throws DecodeException {
+    JsonObject obj = new JsonObject(msg.toString());
+    switch (obj.getString("action")) {
+      case "read":
+        String data = obj.getString("data");
+        decoder.write(data.getBytes());
+        break;
     }
   }
 
@@ -45,7 +42,6 @@ public class IoUtils {
     String configString;
     InputStream is = classLoader.getResourceAsStream(name);
     if (is == null) {
-      System.out.println("Cannot read resource:" + name);//TODO log
       throw new IOException("Cannot read resource:" + name);
     }
     try {

@@ -1,5 +1,8 @@
 package io.termd.undertow.websockets;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.websocket.ClientEndpointConfig;
 import javax.websocket.CloseReason;
 import javax.websocket.ContainerProvider;
@@ -19,6 +22,8 @@ import java.util.function.Consumer;
  */
 public class Client {
 
+    private static Logger log = LoggerFactory.getLogger(Client.class);
+
     ProgramaticClientEndpoint endpoint = new ProgramaticClientEndpoint();
     private Consumer<Session> onOpenConsumer;
     private Consumer<String> onStringMessageConsumer;
@@ -33,7 +38,7 @@ public class Client {
     }
 
     public void close() throws Exception {
-        System.out.println("Client is closing connection..."); //TODO log debug
+        log.debug("Client is closing connection.");
         endpoint.session.close();
 //        endpoint.closeLatch.await(10, TimeUnit.SECONDS);
     }
@@ -68,13 +73,13 @@ public class Client {
 
         @Override
         public void onOpen(Session session, EndpointConfig config) {
-            System.out.println("> Client received open.");
+            log.debug("Client received open.");
             this.session = session;
 
             session.addMessageHandler(new MessageHandler.Whole<String>() {
                 @Override
                 public void onMessage(String message) {
-                    System.out.println("> Client received message:" + message);
+                    log.trace("Client received text message: {}", message);
                     if (onStringMessageConsumer != null) {
                         onStringMessageConsumer.accept(message);
                     }
@@ -83,7 +88,7 @@ public class Client {
             session.addMessageHandler(new MessageHandler.Whole<byte[]>() {
                 @Override
                 public void onMessage(byte[] bytes) {
-                    System.out.println("> Client received binary message:" + new String(bytes));
+                    log.trace("Client received binary message: {}", new String(bytes));
                     if (onBinaryMessageConsumer != null) {
                         onBinaryMessageConsumer.accept(bytes);
                     }
@@ -96,7 +101,7 @@ public class Client {
 
         @Override
         public void onClose(Session session, CloseReason closeReason) {
-            System.out.println("> Client received close.");
+            log.debug("Client received close.");
             onCloseConsumer.accept(closeReason);
 //            closeLatch.countDown();
         }
@@ -106,7 +111,7 @@ public class Client {
             if (onErrorConsumer != null) {
                 onErrorConsumer.accept(thr);
             } else {
-                thr.printStackTrace(); //TODO log
+                log.error("No error handler defined. Received error was: ", thr);
             }
         }
     }

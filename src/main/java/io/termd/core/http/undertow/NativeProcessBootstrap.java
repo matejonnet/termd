@@ -8,6 +8,8 @@ import io.termd.core.tty.Signal;
 import io.termd.core.tty.TtyConnection;
 import io.termd.core.util.Handler;
 import io.termd.core.util.Helper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,6 +21,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class NativeProcessBootstrap implements Handler<TtyConnection> {
 
+  Logger log = LoggerFactory.getLogger(NativeProcessBootstrap.class);
 
   @Override
   public void handle(final TtyConnection conn) {
@@ -26,7 +29,8 @@ public class NativeProcessBootstrap implements Handler<TtyConnection> {
     Keymap keymap = new Keymap(inputrc);
     Readline readline = new Readline(keymap);
     for (io.termd.core.readline.Function function : Helper.loadServices(Thread.currentThread().getContextClassLoader(), io.termd.core.readline.Function.class)) {
-      System.out.println("Server is adding function to readline:" + function); //TODO log trace
+      log.trace("Server is adding function to readline: {}", function);
+
       readline.addFunction(function);
     }
     conn.setTermHandler(new Handler<String>() {

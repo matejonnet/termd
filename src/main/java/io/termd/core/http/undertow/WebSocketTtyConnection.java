@@ -16,6 +16,8 @@ import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.WebSocketCallback;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.core.WebSockets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xnio.ChannelListener;
 import org.xnio.Pooled;
 
@@ -28,6 +30,8 @@ import java.util.concurrent.Executor;
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
 public class WebSocketTtyConnection implements TtyConnection {
+
+  private static Logger log = LoggerFactory.getLogger(WebSocketTtyConnection.class);
 
   private final WebSocketChannel socket;
   private Dimension size = null;
@@ -59,13 +63,13 @@ public class WebSocketTtyConnection implements TtyConnection {
 
       @Override
       protected void onFullBinaryMessage(WebSocketChannel channel, BufferedBinaryMessage message) throws IOException {
-        System.out.println("# Server received full binary message"); //TODO log
+        log.trace("Server received full binary message");
         Pooled<ByteBuffer[]> pulledData = message.getData();
         try {
           ByteBuffer[] resource = pulledData.getResource();
           ByteBuffer byteBuffer = WebSockets.mergeBuffers(resource);
           String msg = new String(byteBuffer.array());
-          System.out.println("Sending message to decoder: " + msg);
+          log.trace("Sending message to decoder: {}", msg);
           IoUtils.writeToDecoder(decoder, msg);
         } finally {
           pulledData.discard();
@@ -74,7 +78,7 @@ public class WebSocketTtyConnection implements TtyConnection {
 
       @Override
       protected void onFullTextMessage (WebSocketChannel channel, BufferedTextMessage message) throws IOException {
-        System.out.println("# Server received full binary message: " + message.getData()); //TODO log
+                log.trace("Server received full binary message: {}", message.getData());
         IoUtils.writeToDecoder(decoder, message.getData());
       }
     };
@@ -84,11 +88,12 @@ public class WebSocketTtyConnection implements TtyConnection {
 
   @Override
   public Handler<String> getTermHandler() {
-    return null;
+    return null; //TODO
   }
 
   @Override
   public void setTermHandler(Handler<String> handler) {
+    //TODO
   }
 
   @Override
