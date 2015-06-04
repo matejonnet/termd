@@ -180,8 +180,8 @@ public class NativeProcessBootstrap implements Handler<TtyConnection> {
 
   public static void start(String host, int port, final Runnable onStart) throws InterruptedException {
     WebSocketBootstrap bootstrap = new WebSocketBootstrap(
-        "localhost",
-        8080,
+        host,
+        port,
         new NativeProcessBootstrap());
 //    final CountDownLatch latch = new CountDownLatch(1);
     bootstrap.bootstrap(new Handler<Boolean>() {

@@ -91,7 +91,7 @@ public class SmokeTest {
     private void assertThatResultWasReceived(ObjectWrapper<List<String>> remoteResponseWrapper, long timeout, TemporalUnit timeUnit) {
         List<String> strings = remoteResponseWrapper.get();
 
-        File cwd = new File("");
+        File cwd = new File(""); //TODO use system independent command eg. java -help
 
         boolean responseContainsCWD = false;
         LocalDateTime stared = LocalDateTime.now();
