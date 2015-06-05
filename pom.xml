@@ -179,7 +179,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>io.termd.core.http.undertow.NativeProcessBootstrap</mainClass>
+              <mainClass>io.termd.core.http.undertow.UndertowProcessBootstrap</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>

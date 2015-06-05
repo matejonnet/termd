@@ -1,6 +1,6 @@
 package io.termd.undertow.websockets;
 
-import io.termd.core.http.undertow.NativeProcessBootstrap;
+import io.termd.core.http.undertow.UndertowProcessBootstrap;
 
 import java.util.concurrent.Semaphore;
 
@@ -28,7 +28,7 @@ public class TermdServer {
         mutex.acquire();
         serverThread = new Thread(() -> {
             try {
-                NativeProcessBootstrap.start(host, port, onStart);
+                UndertowProcessBootstrap.start(host, port, onStart);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

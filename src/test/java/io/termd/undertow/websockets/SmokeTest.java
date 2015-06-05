@@ -12,7 +12,6 @@ import javax.websocket.CloseReason;
 import javax.websocket.RemoteEndpoint;
 import javax.websocket.Session;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -67,7 +66,7 @@ public class SmokeTest {
             if ("% ".equals(response)) {
                 if (!pwdExecuted.get()) {
                     pwdExecuted.set(true);
-                    executeRemoteCommand(client, "pwd");
+                    executeRemoteCommand(client, "java -help");
                 }
             } else {
                 remoteResponseWrapper.get().add(response);
@@ -84,16 +83,15 @@ public class SmokeTest {
             throw new AssertionError("Failed to connect to remote client.", e);
         }
 
-        assertThatResultWasReceived(remoteResponseWrapper, 15, ChronoUnit.SECONDS);
+        assertThatResultWasReceived(remoteResponseWrapper, 5, ChronoUnit.SECONDS);
+
         client.close();
     }
 
     private void assertThatResultWasReceived(ObjectWrapper<List<String>> remoteResponseWrapper, long timeout, TemporalUnit timeUnit) {
         List<String> strings = remoteResponseWrapper.get();
 
-        File cwd = new File(""); //TODO use system independent command eg. java -help
-
-        boolean responseContainsCWD = false;
+        boolean responseContainsExpectedString = false;
         LocalDateTime stared = LocalDateTime.now();
         while (true) {
             List<String> stringsCopy = new ArrayList<>(strings);
@@ -104,13 +102,13 @@ public class SmokeTest {
                 throw new AssertionError("Did not received response in " + timeout + " " + timeUnit);
             }
 
-            if (remoteResponses.contains(cwd.getAbsolutePath())) {
-                responseContainsCWD = true;
+            if (remoteResponses.contains("-classpath")) {
+                responseContainsExpectedString = true;
                 log.info("Remote responses: {}", remoteResponses);
                 break;
             }
         }
-        Assert.assertTrue("Response should contain current working dir.", responseContainsCWD);
+        Assert.assertTrue("Response should contain current working dir.", responseContainsExpectedString);
     }
 
     private void executeRemoteCommand(Client client, String command) {
