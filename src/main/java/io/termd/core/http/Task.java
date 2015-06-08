@@ -1,4 +1,4 @@
-package io.termd.core.http.undertow;
+package io.termd.core.http;
 
 import io.termd.core.ProcessStatus;
 import io.termd.core.Status;
@@ -17,16 +17,16 @@ import java.nio.charset.StandardCharsets;
 /**
 * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
 */
-class Task extends Thread {
+public class Task extends Thread {
 
-  private UndertowProcessBootstrap undertowProcessBootstrap;
+  private ProcessBootstrap processBootstrap;
   final TtyConnection conn;
   final Readline readline;
   final String line;
   final ProcessStatus processStatus = new ProcessStatus(Status.NEW);
 
-  public Task(UndertowProcessBootstrap undertowProcessBootstrap, TtyConnection conn, Readline readline, String line) {
-    this.undertowProcessBootstrap = undertowProcessBootstrap;
+  public Task(ProcessBootstrap processBootstrap, TtyConnection conn, Readline readline, String line) {
+    this.processBootstrap = processBootstrap;
     this.conn = conn;
     this.readline = readline;
     this.line = line;
@@ -140,7 +140,7 @@ class Task extends Thread {
     conn.schedule(new Runnable() {
       @Override
       public void run() {
-        undertowProcessBootstrap.read(conn, readline);
+        processBootstrap.read(conn, readline);
       }
     });
   }

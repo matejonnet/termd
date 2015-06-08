@@ -1,6 +1,7 @@
 package io.termd.core.http.undertow;
 
-import io.termd.core.tty.TtyConnection;
+import io.termd.core.http.ProcessBootstrap;
+import io.termd.core.http.Task;
 import io.termd.core.util.Handler;
 import io.undertow.Undertow;
 import io.undertow.io.Sender;
@@ -29,15 +30,13 @@ public class WebSocketBootstrap {
 
   final String host;
   final int port;
-  final Handler<TtyConnection> termdHandler;
+  final ProcessBootstrap termdHandler;
   private final Executor executor = Executors.newFixedThreadPool(1);
-  private final List<Task> tasks;
 
-  public WebSocketBootstrap(String host, int port, Handler<TtyConnection> termdHandler, List<Task> tasks) {
+  public WebSocketBootstrap(String host, int port, ProcessBootstrap termdHandler) {
     this.host = host;
     this.port = port;
     this.termdHandler = termdHandler;
-    this.tasks = tasks;
   }
 
   public void bootstrap(final Handler<Boolean> completionHandler) {
@@ -92,9 +91,10 @@ public class WebSocketBootstrap {
     return new HttpHandler() {
         @Override
         public void handleRequest(HttpServerExchange exchange) throws Exception {
-            Map<String, Object> tasksMap = tasks.stream().collect(Collectors.toMap(t -> String.valueOf(t.getId()), t -> t.getProcessStatus().getStatus().toString()));
-            JsonObject jsonObject = new JsonObject(tasksMap);
-            exchange.getResponseSender().send(jsonObject.toString());
+          List<Task> tasks = termdHandler.getRunningTasks();
+          Map<String, Object> tasksMap = tasks.stream().collect(Collectors.toMap(t -> String.valueOf(t.getId()), t -> t.getProcessStatus().getStatus().toString()));
+          JsonObject jsonObject = new JsonObject(tasksMap);
+          exchange.getResponseSender().send(jsonObject.toString());
         }
     };
   }
