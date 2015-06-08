@@ -1,6 +1,5 @@
 package io.termd.core.http.undertow;
 
-import io.termd.core.http.IoUtils;
 import io.termd.core.tty.TtyConnection;
 import io.termd.core.util.Handler;
 import io.undertow.Undertow;
@@ -13,8 +12,12 @@ import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
 import org.vertx.java.core.json.JsonObject;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -75,7 +78,7 @@ public class WebSocketBootstrap {
 
     try {
       String resourcePath = "io/termd/core/http" + requestPath;
-      String content = IoUtils.readResource(resourcePath, this.getClass().getClassLoader());
+      String content = readResource(resourcePath, this.getClass().getClassLoader());
       responseSender.send(content);
     } catch (Exception e) {
       e.printStackTrace();
@@ -109,4 +112,21 @@ public class WebSocketBootstrap {
     return webSocketHandshakeHandler;
 
   }
+
+  private String readResource(String name, ClassLoader classLoader) throws IOException {
+    String configString;
+    InputStream is = classLoader.getResourceAsStream(name);
+    if (is == null) {
+      throw new IOException("Cannot read resource:" + name);
+    }
+    try {
+      configString = new Scanner(is, Charset.defaultCharset().name()).useDelimiter("\\A").next();
+    } finally {
+      if (is != null) {
+        is.close();
+      }
+    }
+    return configString;
+  }
+
 }
