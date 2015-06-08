@@ -85,10 +85,12 @@ public class SmokeTest {
 
         assertThatResultWasReceived(remoteResponseWrapper, 5, ChronoUnit.SECONDS);
 
+        assertThatCommandCompletedSuccessfully(remoteResponseWrapper, 5, ChronoUnit.SECONDS);
+
         client.close();
     }
 
-    private void assertThatResultWasReceived(ObjectWrapper<List<String>> remoteResponseWrapper, long timeout, TemporalUnit timeUnit) {
+    private void assertThatResultWasReceived(ObjectWrapper<List<String>> remoteResponseWrapper, long timeout, TemporalUnit timeUnit) throws InterruptedException {
         List<String> strings = remoteResponseWrapper.get();
 
         boolean responseContainsExpectedString = false;
@@ -106,13 +108,40 @@ public class SmokeTest {
                 responseContainsExpectedString = true;
                 log.info("Remote responses: {}", remoteResponses);
                 break;
+            } else {
+                Thread.sleep(200);
+            }
+        }
+        Assert.assertTrue("Response should contain current working dir.", responseContainsExpectedString);
+    }
+
+    private void assertThatCommandCompletedSuccessfully(ObjectWrapper<List<String>> remoteResponseWrapper, long timeout, TemporalUnit timeUnit) throws InterruptedException {
+        List<String> strings = remoteResponseWrapper.get();
+
+        boolean responseContainsExpectedString = false;
+        LocalDateTime stared = LocalDateTime.now();
+        while (true) {
+            List<String> stringsCopy = new ArrayList<>(strings);
+            String remoteResponses = stringsCopy.stream().collect(Collectors.joining());
+
+            if (stared.plus(timeout, timeUnit).isBefore(LocalDateTime.now())) {
+                log.info("Remote responses: {}", remoteResponses);
+                throw new AssertionError("Did not received response in " + timeout + " " + timeUnit);
+            }
+
+            if (remoteResponses.contains("-classpathx")) {
+                responseContainsExpectedString = true;
+                log.info("Remote responses: {}", remoteResponses);
+                break;
+            } else {
+                Thread.sleep(200);
             }
         }
         Assert.assertTrue("Response should contain current working dir.", responseContainsExpectedString);
     }
 
     private void executeRemoteCommand(Client client, String command) {
-        System.out.println("Executing remote command ...");
+        log.info("Executing remote command ...");
         RemoteEndpoint.Basic remoteEndpoint = client.getRemoteEndpoint();
         String data = "{\"action\":\"read\",\"data\":\"" + command + "\\r\\n\"}";
         try {
@@ -126,15 +155,11 @@ public class SmokeTest {
         Client client = new Client();
 
         Consumer<Session> onOpen = (session) -> {
-            try {
-                System.out.println("Client connection opened.");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            log.info("Client connection opened.");
         };
 
         Consumer<CloseReason> onClose = (closeReason) -> {
-            System.out.println("Client connection closed. " + closeReason);
+            log.info("Client connection closed. " + closeReason);
         };
 
         client.onOpen(onOpen);

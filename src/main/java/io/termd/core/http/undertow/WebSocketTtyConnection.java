@@ -41,7 +41,7 @@ public class WebSocketTtyConnection implements TtyConnection {
   private final ReadBuffer readBuffer = new ReadBuffer(new Executor() {
     @Override
     public void execute(final Runnable command) {
-      System.out.println("Server read buffer executing command:" + command);
+      System.out.println("Server read buffer executing command:" + command); //TODO log
       executor.execute(command);
     }
   });
