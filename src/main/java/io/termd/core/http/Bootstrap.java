@@ -10,8 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
@@ -20,7 +18,15 @@ public class Bootstrap implements Handler<TtyConnection> {
 
   Logger log = LoggerFactory.getLogger(Bootstrap.class);
 
-  private final Set<TaskStatusUpdateListener> statusUpdateListeners = new HashSet<>();
+  private TaskStatusUpdateListener taskStatusUpdateListener;
+
+  public Bootstrap() {
+    this((taskStatusUpdateEvent) -> {});
+  }
+
+  public Bootstrap(TaskStatusUpdateListener taskStatusUpdateListener) {
+    this.taskStatusUpdateListener = taskStatusUpdateListener;
+  }
 
   @Override
   public void handle(final TtyConnection conn) {
@@ -47,26 +53,10 @@ public class Bootstrap implements Handler<TtyConnection> {
     Handler<String> requestHandler = new Handler<String>() {
       @Override
       public void handle(String line) {
-        Task task = new Task(Bootstrap.this, conn, readline, line);
+        Task task = new Task(Bootstrap.this, conn, readline, line, taskStatusUpdateListener);
         task.start();
       }
     };
     readline.readline(conn, "% ", requestHandler);
   }
-
-  public boolean addStatusUpdateListener(TaskStatusUpdateListener statusUpdateListener) {
-    return statusUpdateListeners.add(statusUpdateListener);
-  }
-
-  public boolean removeStatusUpdateListener(TaskStatusUpdateListener statusUpdateListener) {
-    return statusUpdateListeners.remove(statusUpdateListener);
-  }
-
-  void notifyStatusUpdated(TaskStatusUpdateEvent statusUpdateEvent) {
-    for (TaskStatusUpdateListener statusUpdateListener : statusUpdateListeners) {
-      log.debug("Notifying listener {} status update {}", statusUpdateListener, statusUpdateEvent.toJson());
-      statusUpdateListener.statusUpdated(statusUpdateEvent);
-    }
-  }
-
 }

@@ -27,12 +27,14 @@ public class Task extends Thread {
   final Readline readline;
   final String line;
   private Status status;
+  private TaskStatusUpdateListener taskStatusUpdateListener;
 
-  public Task(Bootstrap bootstrap, TtyConnection conn, Readline readline, String line) {
+  public Task(Bootstrap bootstrap, TtyConnection conn, Readline readline, String line, TaskStatusUpdateListener taskStatusUpdateListener) {
     this.bootstrap = bootstrap;
     this.conn = conn;
     this.readline = readline;
     this.line = line;
+    this.taskStatusUpdateListener = taskStatusUpdateListener;
     status = Status.NEW;
   }
 
@@ -153,7 +155,7 @@ public class Task extends Thread {
     Status old = this.status;
     this.status = status;
     TaskStatusUpdateEvent statusUpdateEvent = new TaskStatusUpdateEvent(this, old, status);
-    bootstrap.notifyStatusUpdated(statusUpdateEvent);
+    taskStatusUpdateListener.accept(statusUpdateEvent);
   }
 
   public Status getStatus() {

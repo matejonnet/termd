@@ -1,7 +1,5 @@
 package io.termd.core.http.undertow;
 
-import io.termd.core.ProcessStatus;
-import io.termd.core.http.Bootstrap;
 import io.termd.core.http.Task;
 import io.termd.core.http.TaskStatusUpdateListener;
 import io.termd.core.util.Handler;
@@ -38,11 +36,11 @@ public class WebSocketBootstrap {
 
   final String host;
   final int port;
-  final Bootstrap termdHandler;
+  final UndertowProcessBootstrap termdHandler;
   private final Executor executor = Executors.newFixedThreadPool(1);
   private final Collection<Task> runningTasks;
 
-  public WebSocketBootstrap(String host, int port, Bootstrap termdHandler, Collection runningTasks) {
+  public WebSocketBootstrap(String host, int port, UndertowProcessBootstrap termdHandler, Collection runningTasks) {
     this.host = host;
     this.port = port;
     this.termdHandler = termdHandler;
@@ -81,7 +79,7 @@ public class WebSocketBootstrap {
       return;
     }
     if (requestPath.equals("/process-status-updates")) {
-      getWebSocketStatusUpdateHandler().handleRequest(exchange);
+      webSocketStatusUpdateHandler().handleRequest(exchange);
       return;
     }
     if (requestPath.equals("/processes")) {
@@ -114,7 +112,7 @@ public class WebSocketBootstrap {
       @Override
       public void onConnect(WebSocketHttpExchange exchange, WebSocketChannel webSocketChannel) {
         WebSocketTtyConnection conn = new WebSocketTtyConnection(webSocketChannel, executor);
-        termdHandler.handle(conn.getTtyConnection());
+        termdHandler.getBootstrap().handle(conn.getTtyConnection());
       }
     };
 
@@ -122,7 +120,7 @@ public class WebSocketBootstrap {
     return webSocketHandshakeHandler;
   }
 
-  private HttpHandler getWebSocketStatusUpdateHandler() {
+  private HttpHandler webSocketStatusUpdateHandler() {
     WebSocketConnectionCallback webSocketConnectionCallback = new WebSocketConnectionCallback() {
       @Override
       public void onConnect(WebSocketHttpExchange exchange, WebSocketChannel webSocketChannel) {
@@ -161,13 +159,4 @@ public class WebSocketBootstrap {
     return configString;
   }
 
-
-  private void notifyCompleted(ProcessStatus processStatus) {
-//    log.debug("Sending exit status...");
-//    Map<String, Object> jsonMap = new HashMap<>();
-//    jsonMap.put("action", "status");
-//    jsonMap.put("status", processStatus.getStatus().toString()); //TODO charset
-//    JsonObject jsonObject = new JsonObject(jsonMap);
-//    conn.writeHandler().handle(Helper.toCodePoints(jsonObject.encode()));
-  }
 }
