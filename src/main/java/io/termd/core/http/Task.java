@@ -22,14 +22,14 @@ public class Task extends Thread {
 
   private final Logger log = LoggerFactory.getLogger(Task.class);
 
-  private ProcessBootstrap processBootstrap;
+  private Bootstrap bootstrap;
   final TtyConnection conn;
   final Readline readline;
   final String line;
   private Status status;
 
-  public Task(ProcessBootstrap processBootstrap, TtyConnection conn, Readline readline, String line) {
-    this.processBootstrap = processBootstrap;
+  public Task(Bootstrap bootstrap, TtyConnection conn, Readline readline, String line) {
+    this.bootstrap = bootstrap;
     this.conn = conn;
     this.readline = readline;
     this.line = line;
@@ -144,7 +144,7 @@ public class Task extends Thread {
     conn.schedule(new Runnable() {
       @Override
       public void run() {
-        processBootstrap.read(conn, readline);
+        bootstrap.read(conn, readline);
       }
     });
   }
@@ -153,7 +153,7 @@ public class Task extends Thread {
     Status old = this.status;
     this.status = status;
     TaskStatusUpdateEvent statusUpdateEvent = new TaskStatusUpdateEvent(this, old, status);
-    processBootstrap.notifyStatusUpdated(statusUpdateEvent);
+    bootstrap.notifyStatusUpdated(statusUpdateEvent);
   }
 
   public Status getStatus() {

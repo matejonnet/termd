@@ -1,27 +1,35 @@
 package io.termd.core.http.undertow;
 
-import io.termd.core.http.ProcessBootstrap;
+import io.termd.core.http.Bootstrap;
+import io.termd.core.http.Task;
+import io.termd.core.http.TaskStatusUpdateListener;
 import io.termd.core.util.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
-public class UndertowProcessBootstrap extends ProcessBootstrap {
+public class UndertowProcessBootstrap {
 
   Logger log = LoggerFactory.getLogger(UndertowProcessBootstrap.class);
 
+  private final List<Task> runningTasks = new ArrayList<>();
+
   public static void main(String[] args) throws Exception {
-    start("localhost", 8080, null);
+    new UndertowProcessBootstrap().start("localhost", 8080, null);
   }
 
-  public static void start(String host, int port, final Runnable onStart) throws InterruptedException {
-    WebSocketBootstrap bootstrap = new WebSocketBootstrap(
-        host,
-        port,
-        new UndertowProcessBootstrap());
-    bootstrap.bootstrap(new Handler<Boolean>() {
+  public void start(String host, int port, final Runnable onStart) throws InterruptedException {
+    Bootstrap bootstrap = new Bootstrap();
+    bootstrap.addStatusUpdateListener(getStatusUpdateListener());
+
+    WebSocketBootstrap webSocketBootstrap = new WebSocketBootstrap(host, port, bootstrap, runningTasks);
+
+    webSocketBootstrap.bootstrap(new Handler<Boolean>() {
       @Override
       public void handle(Boolean event) {
         if (event) {
@@ -32,5 +40,21 @@ public class UndertowProcessBootstrap extends ProcessBootstrap {
         }
       }
     });
+  }
+
+  private TaskStatusUpdateListener getStatusUpdateListener() {
+    return (statusUpdateEvent) -> {
+      switch (statusUpdateEvent.getNewStatus()) {
+        case RUNNING:
+          runningTasks.add(statusUpdateEvent.getTask());
+          break;
+
+        case SUCCESSFULLY_COMPLETED:
+        case FAILED:
+        case INTERRUPTED:
+          runningTasks.remove(statusUpdateEvent.getTask());
+      }
+
+    };
   }
 }

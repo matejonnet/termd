@@ -10,20 +10,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
-public abstract class ProcessBootstrap implements Handler<TtyConnection> {
+public class Bootstrap implements Handler<TtyConnection> {
 
-  Logger log = LoggerFactory.getLogger(ProcessBootstrap.class);
+  Logger log = LoggerFactory.getLogger(Bootstrap.class);
 
   private final Set<TaskStatusUpdateListener> statusUpdateListeners = new HashSet<>();
-  private List<Task> runningTasks = new ArrayList<>(); //TODO keep "short" history but remove "old" completed tasks. Use evicting queue instead of list
 
   @Override
   public void handle(final TtyConnection conn) {
@@ -50,16 +47,11 @@ public abstract class ProcessBootstrap implements Handler<TtyConnection> {
     Handler<String> requestHandler = new Handler<String>() {
       @Override
       public void handle(String line) {
-        Task task = new Task(ProcessBootstrap.this, conn, readline, line);
-        runningTasks.add(task);
+        Task task = new Task(Bootstrap.this, conn, readline, line);
         task.start();
       }
     };
     readline.readline(conn, "% ", requestHandler);
-  }
-
-  public List<Task> getRunningTasks() {
-    return runningTasks;
   }
 
   public boolean addStatusUpdateListener(TaskStatusUpdateListener statusUpdateListener) {

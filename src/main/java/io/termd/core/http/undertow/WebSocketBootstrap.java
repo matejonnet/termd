@@ -1,7 +1,7 @@
 package io.termd.core.http.undertow;
 
 import io.termd.core.ProcessStatus;
-import io.termd.core.http.ProcessBootstrap;
+import io.termd.core.http.Bootstrap;
 import io.termd.core.http.Task;
 import io.termd.core.http.TaskStatusUpdateListener;
 import io.termd.core.util.Handler;
@@ -21,8 +21,8 @@ import org.vertx.java.core.json.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.Executor;
@@ -38,13 +38,15 @@ public class WebSocketBootstrap {
 
   final String host;
   final int port;
-  final ProcessBootstrap termdHandler;
+  final Bootstrap termdHandler;
   private final Executor executor = Executors.newFixedThreadPool(1);
+  private final Collection<Task> runningTasks;
 
-  public WebSocketBootstrap(String host, int port, ProcessBootstrap termdHandler) {
+  public WebSocketBootstrap(String host, int port, Bootstrap termdHandler, Collection runningTasks) {
     this.host = host;
     this.port = port;
     this.termdHandler = termdHandler;
+    this.runningTasks = runningTasks;
   }
 
   public void bootstrap(final Handler<Boolean> completionHandler) {
@@ -100,14 +102,10 @@ public class WebSocketBootstrap {
   }
 
   private HttpHandler getProcessStatusHandler() {
-    return new HttpHandler() {
-        @Override
-        public void handleRequest(HttpServerExchange exchange) throws Exception {
-          List<Task> tasks = termdHandler.getRunningTasks();
-          Map<String, Object> tasksMap = tasks.stream().collect(Collectors.toMap(t -> String.valueOf(t.getId()), t -> t.getStatus().toString()));
-          JsonObject jsonObject = new JsonObject(tasksMap);
-          exchange.getResponseSender().send(jsonObject.toString());
-        }
+    return exchange -> {
+      Map<String, Object> tasksMap = runningTasks.stream().collect(Collectors.toMap(t -> String.valueOf(t.getId()), t -> t.getStatus().toString()));
+      JsonObject jsonObject = new JsonObject(tasksMap);
+      exchange.getResponseSender().send(jsonObject.toString());
     };
   }
 

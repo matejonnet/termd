@@ -1,6 +1,6 @@
 package io.termd.core.http.vertx;
 
-import io.termd.core.http.ProcessBootstrap;
+import io.termd.core.http.Bootstrap;
 import io.termd.core.util.Handler;
 import org.vertx.java.core.AsyncResult;
 
@@ -9,15 +9,16 @@ import java.util.concurrent.CountDownLatch;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class NativeProcessBootstrap extends ProcessBootstrap {
+public class NativeProcessBootstrap {
 
   public static void main(String[] args) throws Exception {
-    SockJSBootstrap bootstrap = new SockJSBootstrap(
+    Bootstrap bootstrap = new Bootstrap();
+    SockJSBootstrap sockJSBootstrap = new SockJSBootstrap(
         "localhost",
         8080,
-        new NativeProcessBootstrap());
+        bootstrap);
     final CountDownLatch latch = new CountDownLatch(1);
-    bootstrap.bootstrap(new Handler<AsyncResult<Void>>() {
+    sockJSBootstrap.bootstrap(new Handler<AsyncResult<Void>>() {
       @Override
       public void handle(AsyncResult<Void> event) {
         if (event.succeeded()) {

@@ -16,6 +16,18 @@ public class TaskStatusUpdateEvent {
     this.newStatus = newStatus;
   }
 
+  public Task getTask() {
+    return task;
+  }
+
+  public Status getOldStatus() {
+    return oldStatus;
+  }
+
+  public Status getNewStatus() {
+    return newStatus;
+  }
+
   public String toJson() {
     return "{\"task\" : \"" + task.getId() + "\", \"old-status\" : \"" + oldStatus.toString() + "\", \"new-status\" : \"" + newStatus.toString() + "\"}";
   }

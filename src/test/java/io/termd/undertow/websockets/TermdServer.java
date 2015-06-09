@@ -28,7 +28,7 @@ public class TermdServer {
         mutex.acquire();
         serverThread = new Thread(() -> {
             try {
-                UndertowProcessBootstrap.start(host, port, onStart);
+                new UndertowProcessBootstrap().start(host, port, onStart);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
