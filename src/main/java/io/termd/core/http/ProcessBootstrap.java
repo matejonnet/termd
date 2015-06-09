@@ -11,7 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
@@ -20,6 +22,7 @@ public abstract class ProcessBootstrap implements Handler<TtyConnection> {
 
   Logger log = LoggerFactory.getLogger(ProcessBootstrap.class);
 
+  private final Set<TaskStatusUpdateListener> statusUpdateListeners = new HashSet<>();
   private List<Task> runningTasks = new ArrayList<>(); //TODO keep "short" history but remove "old" completed tasks. Use evicting queue instead of list
 
   @Override
@@ -58,4 +61,20 @@ public abstract class ProcessBootstrap implements Handler<TtyConnection> {
   public List<Task> getRunningTasks() {
     return runningTasks;
   }
+
+  public boolean addStatusUpdateListener(TaskStatusUpdateListener statusUpdateListener) {
+    return statusUpdateListeners.add(statusUpdateListener);
+  }
+
+  public boolean removeStatusUpdateListener(TaskStatusUpdateListener statusUpdateListener) {
+    return statusUpdateListeners.remove(statusUpdateListener);
+  }
+
+  void notifyStatusUpdated(TaskStatusUpdateEvent statusUpdateEvent) {
+    for (TaskStatusUpdateListener statusUpdateListener : statusUpdateListeners) {
+      log.debug("Notifying listener {} status update {}", statusUpdateListener, statusUpdateEvent.toJson());
+      statusUpdateListener.statusUpdated(statusUpdateEvent);
+    }
+  }
+
 }

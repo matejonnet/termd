@@ -14,8 +14,12 @@
       var term = new Terminal({cols: 80, rows: 24, screenKeys: true});
       socket.onmessage = function(event) {
         if (event.type === 'message') {
-          var data = event.data;
-          term.write(data);
+          console.log("event.data:" + event.data);
+          //var received = JSON.parse( event.data );
+          //if (received.action == 'output') {
+          //    term.write(received.data);
+          //}
+          term.write(event.data);
         }
       }
       socket.onclose = function() {

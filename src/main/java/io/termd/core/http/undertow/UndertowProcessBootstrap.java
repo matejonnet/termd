@@ -12,8 +12,6 @@ public class UndertowProcessBootstrap extends ProcessBootstrap {
 
   Logger log = LoggerFactory.getLogger(UndertowProcessBootstrap.class);
 
-
-
   public static void main(String[] args) throws Exception {
     start("localhost", 8080, null);
   }

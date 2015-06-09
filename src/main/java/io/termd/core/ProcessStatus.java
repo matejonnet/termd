@@ -5,21 +5,21 @@ package io.termd.core;
  */
 public class ProcessStatus {
 
-    private Status status;
+  private Status status;
 
-    public ProcessStatus(Status status) {
-        this.status = status;
-    }
+  public ProcessStatus(Status status) {
+    this.status = status;
+  }
 
-    public void setStatus(Status status) {
-        this.status = status;
-    }
+  public void setStatus(Status status) {
+    this.status = status;
+  }
 
-    public Status getStatus() {
-        return status;
-    }
+  public Status getStatus() {
+    return status;
+  }
 
-    public String toJson() {
-        return "{\"status\" : \"" + status + "\"}";
-    }
+  public String toJson() {
+    return "{\"status\" : \"" + status + "\"}";
+  }
 }

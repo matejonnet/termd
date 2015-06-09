@@ -46,12 +46,6 @@ public class WebSocketTtyConnection extends AbstractTtyConnection implements Tty
           pulledData.discard();
         }
       }
-
-//      @Override
-//      protected void onFullTextMessage (WebSocketChannel channel, BufferedTextMessage message) throws IOException {
-//        log.trace("Server received full binary message: {}", message.getData());
-//        writeToDecoder(message.getData());
-//      }
     };
     webSocketChannel.getReceiveSetter().set(listener);
     webSocketChannel.resumeReceives();

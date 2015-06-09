@@ -1,6 +1,5 @@
 package io.termd.core.http;
 
-import io.termd.core.ProcessStatus;
 import io.termd.core.Status;
 import io.termd.core.io.BinaryDecoder;
 import io.termd.core.readline.Readline;
@@ -8,6 +7,8 @@ import io.termd.core.tty.Signal;
 import io.termd.core.tty.TtyConnection;
 import io.termd.core.util.Handler;
 import io.termd.core.util.Helper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,17 +20,20 @@ import java.nio.charset.StandardCharsets;
 */
 public class Task extends Thread {
 
+  private final Logger log = LoggerFactory.getLogger(Task.class);
+
   private ProcessBootstrap processBootstrap;
   final TtyConnection conn;
   final Readline readline;
   final String line;
-  final ProcessStatus processStatus = new ProcessStatus(Status.NEW);
+  private Status status;
 
   public Task(ProcessBootstrap processBootstrap, TtyConnection conn, Readline readline, String line) {
     this.processBootstrap = processBootstrap;
     this.conn = conn;
     this.readline = readline;
     this.line = line;
+    status = Status.NEW;
   }
 
   private class Pipe extends Thread {
@@ -92,7 +96,7 @@ public class Task extends Thread {
     ProcessBuilder builder = new ProcessBuilder(line.split("\\s+"));
     try {
       final Process process = builder.start();
-      processStatus.setStatus(Status.RUNNING);
+      setStatus(Status.RUNNING);
       conn.setSignalHandler(new Handler<Signal>() {
         boolean interrupted; // Signal state
         @Override
@@ -113,12 +117,12 @@ public class Task extends Thread {
         process.waitFor();
         int exitValue = process.exitValue();
         if (exitValue == 0) {
-          processStatus.setStatus(Status.SUCCESSFULLY_COMPLETED);
+          setStatus(Status.SUCCESSFULLY_COMPLETED);
         } else {
-          processStatus.setStatus(Status.FAILED);
+          setStatus(Status.FAILED);
         }
       } catch (InterruptedException e) {
-        processStatus.setStatus(Status.INTERRUPTED);
+        setStatus(Status.INTERRUPTED);
         Thread.currentThread().interrupt();
       }
       try {
@@ -145,7 +149,14 @@ public class Task extends Thread {
     });
   }
 
-  public ProcessStatus getProcessStatus() {
-    return processStatus;
+  private void setStatus(Status status) {
+    Status old = this.status;
+    this.status = status;
+    TaskStatusUpdateEvent statusUpdateEvent = new TaskStatusUpdateEvent(this, old, status);
+    processBootstrap.notifyStatusUpdated(statusUpdateEvent);
+  }
+
+  public Status getStatus() {
+    return status;
   }
 }

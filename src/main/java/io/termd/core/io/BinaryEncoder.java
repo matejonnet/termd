@@ -77,9 +77,6 @@ public class BinaryEncoder implements Handler<int[]> {
       }
     }
     drainByteBuffer();
-
-
-
   }
 
   private void drainByteBuffer() {
@@ -87,6 +84,7 @@ public class BinaryEncoder implements Handler<int[]> {
     byte[] bytes = new byte[bBuf.limit() - bBuf.position()];
     bBuf.get(bytes);
     bBuf.compact();
+
     onByte.handle(bytes);
   }
 }
