@@ -1,9 +1,7 @@
 package io.termd.core.http.vertx;
 
-import io.termd.core.http.AbstractTtyConnection;
+import io.termd.core.http.TtyConnectionBridge;
 import io.termd.core.tty.ReadBuffer;
-import io.termd.core.tty.TtyConnection;
-import io.termd.core.util.Dimension;
 import io.termd.core.util.Handler;
 import org.vertx.java.core.Context;
 import org.vertx.java.core.Vertx;
@@ -15,11 +13,9 @@ import java.util.concurrent.Executor;
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class SockJSTtyConnection extends AbstractTtyConnection implements TtyConnection {
+public class SockJSTtyConnection {
 
   private final SockJSSocket socket;
-  private Dimension size = null;
-  private Handler<Dimension> resizeHandler;
   private final Context context;
   private final ReadBuffer readBuffer = new ReadBuffer(new Executor() {
     @Override
@@ -32,21 +28,24 @@ public class SockJSTtyConnection extends AbstractTtyConnection implements TtyCon
       });
     }
   });
+  private final TtyConnectionBridge ttyConnection;
 
   public SockJSTtyConnection(Vertx vertx, SockJSSocket socket) {
+    ttyConnection = new TtyConnectionBridge(onByteHandler(), (task) -> schedule(task));
+
+
     this.socket = socket;
     this.context = vertx.currentContext();
 
     socket.dataHandler(new org.vertx.java.core.Handler<Buffer>() {
       @Override
       public void handle(Buffer msg) {
-        writeToDecoder(msg.toString());
+        ttyConnection.writeToDecoder(msg.toString());
       }
     });
   }
 
-  @Override
-  public void schedule(final Runnable task) {
+  private void schedule(final Runnable task) {
     context.runOnContext(new org.vertx.java.core.Handler<Void>() {
       @Override
       public void handle(Void v) {
@@ -55,13 +54,16 @@ public class SockJSTtyConnection extends AbstractTtyConnection implements TtyCon
     });
   }
 
-  @Override
-  protected Handler<byte[]> onByteHandler() {
+  private Handler<byte[]> onByteHandler() {
     return new Handler<byte[]>() {
       @Override
       public void handle(byte[] event) {
         socket.write(new Buffer(event));
       }
     };
+  }
+
+  public TtyConnectionBridge getTtyConnection() {
+    return ttyConnection;
   }
 }

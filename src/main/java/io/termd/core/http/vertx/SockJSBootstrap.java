@@ -83,7 +83,7 @@ public class SockJSBootstrap {
       @Override
       public void handle(final SockJSSocket socket) {
         SockJSTtyConnection conn = new SockJSTtyConnection(vertx, socket);
-        handler.handle(conn);
+        handler.handle(conn.getTtyConnection());
       }
     });
     httpServer.listen(port, host, new org.vertx.java.core.Handler<AsyncResult<HttpServer>>() {

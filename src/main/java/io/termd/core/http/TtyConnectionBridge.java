@@ -6,6 +6,7 @@ import io.termd.core.io.TelnetCharset;
 import io.termd.core.tty.ReadBuffer;
 import io.termd.core.tty.Signal;
 import io.termd.core.tty.SignalDecoder;
+import io.termd.core.tty.TtyConnection;
 import io.termd.core.util.Dimension;
 import io.termd.core.util.Handler;
 import org.slf4j.Logger;
@@ -19,9 +20,10 @@ import java.util.concurrent.Executor;
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
-public abstract class AbstractTtyConnection {
+public class TtyConnectionBridge implements TtyConnection {
 
-  private static Logger log = LoggerFactory.getLogger(AbstractTtyConnection.class);
+  private static Logger log = LoggerFactory.getLogger(TtyConnectionBridge.class);
+  private final Executor executor;
 
   private Dimension size = null;
 
@@ -33,7 +35,8 @@ public abstract class AbstractTtyConnection {
   private final BinaryDecoder decoder;
   private final BinaryEncoder encoder;
 
-  public AbstractTtyConnection() {
+  public TtyConnectionBridge(Handler<byte[]> onByteHandler, Executor executor) {
+    this.executor = executor;
     readBuffer = new ReadBuffer(new Executor() {
       @Override
       public void execute(final Runnable command) {
@@ -44,14 +47,10 @@ public abstract class AbstractTtyConnection {
 
     onCharSignalDecoder = new SignalDecoder(3).setReadHandler(readBuffer);
     decoder = new BinaryDecoder(512, TelnetCharset.INSTANCE, onCharSignalDecoder);
-    encoder = new BinaryEncoder(512, StandardCharsets.US_ASCII, onByteHandler());
+    encoder = new BinaryEncoder(512, StandardCharsets.US_ASCII, onByteHandler);
   }
 
-  protected abstract void schedule(final Runnable task);
-
-  protected abstract Handler<byte[]> onByteHandler();
-
-  protected void writeToDecoder(String msg) throws DecodeException {
+  public void writeToDecoder(String msg) throws DecodeException {
     JsonObject obj = new JsonObject(msg.toString());
     switch (obj.getString("action")) {
       case "read":
@@ -98,5 +97,10 @@ public abstract class AbstractTtyConnection {
 
   public Handler<int[]> writeHandler() {
     return encoder;
+  }
+
+  @Override
+  public void schedule(Runnable task) {
+    executor.execute(task);
   }
 }

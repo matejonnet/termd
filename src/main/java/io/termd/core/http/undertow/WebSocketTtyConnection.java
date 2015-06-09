@@ -1,7 +1,6 @@
 package io.termd.core.http.undertow;
 
-import io.termd.core.http.AbstractTtyConnection;
-import io.termd.core.tty.TtyConnection;
+import io.termd.core.http.TtyConnectionBridge;
 import io.termd.core.util.Handler;
 import io.undertow.websockets.core.AbstractReceiveListener;
 import io.undertow.websockets.core.BufferedBinaryMessage;
@@ -19,17 +18,22 @@ import java.util.concurrent.Executor;
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
-public class WebSocketTtyConnection extends AbstractTtyConnection implements TtyConnection {
+public class WebSocketTtyConnection {
 
   private static Logger log = LoggerFactory.getLogger(WebSocketTtyConnection.class);
 
-  private WebSocketChannel webSocketChannel;
-  private final Executor executor;
+  private  final TtyConnectionBridge ttyConnection;
 
   public WebSocketTtyConnection(final WebSocketChannel webSocketChannel, Executor executor) {
-    this.webSocketChannel = webSocketChannel;
-    this.executor = executor;
 
+    Handler<byte[]> onByteHandler = (bytes) -> WebSockets.sendBinary(ByteBuffer.wrap(bytes), webSocketChannel, null);
+    ttyConnection = new TtyConnectionBridge(onByteHandler, executor);
+
+    registerWebSocketChannelListener(webSocketChannel);
+    webSocketChannel.resumeReceives();
+  }
+
+  private void registerWebSocketChannelListener(WebSocketChannel webSocketChannel) {
     ChannelListener<WebSocketChannel> listener = new AbstractReceiveListener() {
 
       @Override
@@ -41,22 +45,16 @@ public class WebSocketTtyConnection extends AbstractTtyConnection implements Tty
           ByteBuffer byteBuffer = WebSockets.mergeBuffers(resource);
           String msg = new String(byteBuffer.array());
           log.trace("Sending message to decoder: {}", msg);
-          writeToDecoder(msg);
+          ttyConnection.writeToDecoder(msg);
         } finally {
           pulledData.discard();
         }
       }
     };
     webSocketChannel.getReceiveSetter().set(listener);
-    webSocketChannel.resumeReceives();
   }
 
-  protected Handler<byte[]> onByteHandler() {
-    return (bytes) -> WebSockets.sendBinary(ByteBuffer.wrap(bytes), webSocketChannel, null);
+  public TtyConnectionBridge getTtyConnection() {
+    return ttyConnection;
   }
-
-  public void schedule(final Runnable task) {
-    executor.execute(task);
-  }
-
 }

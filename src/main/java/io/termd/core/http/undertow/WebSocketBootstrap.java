@@ -116,7 +116,7 @@ public class WebSocketBootstrap {
       @Override
       public void onConnect(WebSocketHttpExchange exchange, WebSocketChannel webSocketChannel) {
         WebSocketTtyConnection conn = new WebSocketTtyConnection(webSocketChannel, executor);
-        termdHandler.handle(conn);
+        termdHandler.handle(conn.getTtyConnection());
       }
     };
 
